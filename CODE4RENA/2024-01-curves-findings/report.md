@@ -1,16 +1,36 @@
-## Findings Summary
+<!-- vscode-markdown-toc -->
 
-## No way to refund users if they pay excess when buying curves tokens
+- 1. [Findings Summary](#FindingsSummary)
+- 2. [No way to refund users if they pay excess when buying curves tokens](#Nowaytorefundusersiftheypayexcesswhenbuyingcurvestokens)
+  - 2.1. [Lines of code](#Linesofcode)
+  - 2.2. [Impact](#Impact)
+  - 2.3. [Proof of concept](#Proofofconcept)
+  - 2.4. [Recommendation](#Recommendation)
+- 3. [Medium](#Medium)
+  - 3.1. [When tokens are sold, we should remove them from the list of owned tokens](#Whentokensaresoldweshouldremovethemfromthelistofownedtokens)
+  - 3.2. [Impact](#Impact-1)
+  - 3.3. [Lines of code](#Linesofcode-1)
+  - 3.4. [Recommendation](#Recommendation-1)
 
-### Lines of code
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='FindingsSummary'></a>Findings Summary
+
+## 2. <a name='Nowaytorefundusersiftheypayexcesswhenbuyingcurvestokens'></a>No way to refund users if they pay excess when buying curves tokens
+
+### 2.1. <a name='Linesofcode'></a>Lines of code
 
 https://github.com/code-423n4/2024-01-curves/blob/516aedb7b9a8d341d0d2666c23780d2bd8a9a600/contracts/Curves.sol#L263-L279
 
-### Impact
+### 2.2. <a name='Impact'></a>Impact
 
 Excess ether sent by the user when buying curves token is lost
 
-### Proof of concept
+### 2.3. <a name='Proofofconcept'></a>Proof of concept
 
 https://github.com/code-423n4/2024-01-curves/blob/516aedb7b9a8d341d0d2666c23780d2bd8a9a600/contracts/Curves.sol#L263-L279
 
@@ -44,19 +64,19 @@ When buying curves token, we have a check for the amount being sent `if (msg.val
 This ensures that the buyer always sends enough amount to handle the payment.
 If a user sends a greater amount than required, there is no way for them to get refunded the extra amount
 
-### Recommendation
+### 2.4. <a name='Recommendation'></a>Recommendation
 
 Track the amount the user pays and have a way to refund the excess amount
 
-## Medium
+## 3. <a name='Medium'></a>Medium
 
-### When tokens are sold, we should remove them from the list of owned tokens
+### 3.1. <a name='Whentokensaresoldweshouldremovethemfromthelistofownedtokens'></a>When tokens are sold, we should remove them from the list of owned tokens
 
-### Impact
+### 3.2. <a name='Impact-1'></a>Impact
 
 The mapping ownedCurvesTokenSubjects will contain false data once we sell our curve tokens
 
-### Lines of code
+### 3.3. <a name='Linesofcode-1'></a>Lines of code
 
 https://github.com/code-423n4/2024-01-curves/blob/516aedb7b9a8d341d0d2666c23780d2bd8a9a600/contracts/Curves.sol#L282-L293
 
@@ -103,6 +123,6 @@ If we sell our tokens then attempt to call `transferAllCurvesTokens()` would giv
 
 Note, we are reading `ownedCurvesTokenSubjects[msg.sender]` and storing the results in an array `subjects`.
 
-### Recommendation
+### 3.4. <a name='Recommendation-1'></a>Recommendation
 
 We should update the list by removing the tokens whenever we sell the tokens

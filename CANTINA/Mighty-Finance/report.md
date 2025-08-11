@@ -1,10 +1,54 @@
-## HIGH: First Depositor Exploit allows eToken Inflation
+<!-- vscode-markdown-toc -->
 
-### Summary
+- 1. [HIGH: First Depositor Exploit allows eToken Inflation](#HIGH:FirstDepositorExploitallowseTokenInflation)
+  - 1.1. [Summary](#Summary)
+  - 1.2. [Finding Description](#FindingDescription)
+  - 1.3. [Impact Explanation](#ImpactExplanation)
+  - 1.4. [Likelihood Explanation](#LikelihoodExplanation)
+  - 1.5. [Proof of Concept](#ProofofConcept)
+  - 1.6. [Recommendation](#Recommendation)
+- 2. [MEDIUM: setBorrowingRateConfig Does Not Immediately Update currentBorrowingRate](#MEDIUM:setBorrowingRateConfigDoesNotImmediatelyUpdatecurrentBorrowingRate)
+  - 2.1. [Summary](#Summary-1)
+  - 2.2. [Finding Description](#FindingDescription-1)
+  - 2.3. [Impact Explanation](#ImpactExplanation-1)
+  - 2.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 2.5. [Proof of Concept](#ProofofConcept-1)
+  - 2.6. [Recommendation](#Recommendation-1)
+- 3. [LOW: Rounding Error in Debt Accounting Prevents debt Repayment](#LOW:RoundingErrorinDebtAccountingPreventsdebtRepayment)
+  - 3.1. [Summary](#Summary-1)
+  - 3.2. [Finding Description](#FindingDescription-1)
+  - 3.3. [Impact Explanation](#ImpactExplanation-1)
+  - 3.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 3.5. [Proof of Concept](#ProofofConcept-1)
+  - 3.6. [Recommendation](#Recommendation-1)
+- 4. [LOW: Disabling borrowing affects repaying making it impossible to repay borrowed tokens](#LOW:Disablingborrowingaffectsrepayingmakingitimpossibletorepayborrowedtokens)
+  - 4.1. [Summary](#Summary-1)
+  - 4.2. [Finding Description](#FindingDescription-1)
+  - 4.3. [Impact Explanation](#ImpactExplanation-1)
+  - 4.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 4.5. [Proof of Concept](#ProofofConcept-1)
+  - 4.6. [Recommendation](#Recommendation-1)
+- 5. [INFORMATIONAL: Potential Overcrediting in repay() Due to Misordered Logic](#INFORMATIONAL:PotentialOvercreditinginrepayDuetoMisorderedLogic)
+  - 5.1. [Summary](#Summary-1)
+  - 5.2. [Finding Description](#FindingDescription-1)
+  - 5.3. [Impact Explanation](#ImpactExplanation-1)
+  - 5.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 5.5. [Proof of Concept](#ProofofConcept-1)
+  - 5.6. [Recommendation](#Recommendation-1)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='HIGH:FirstDepositorExploitallowseTokenInflation'></a>HIGH: First Depositor Exploit allows eToken Inflation
+
+### 1.1. <a name='Summary'></a>Summary
 
 The first depositor can deposit a minimal amount, eg 1 wei, to receive 1 wei of eToken. If they then transfer a large sum of liquidity directly to the eToken contract address, it inflates the eToken rate, allowing their initial 1 wei of eToken to redeem the full liquidity amount, potentially draining the reserve
 
-### Finding Description
+### 1.2. <a name='FindingDescription'></a>Finding Description
 
 To deposit we call the function `_deposit` shown below https://cantina.xyz/code/616d8bb4-16ce-4ca9-9ce9-5b99d6e146ef/contracts/lendingpool/LendingPool.sol?lines=205,220
 
@@ -66,21 +110,21 @@ returns (uint256)
 
 The function `eTokenToReserveExchangeRate()` basically returns `totalLiquidity/totalETokens`. Now since `totalLiquidity` returns the full token balance of the eToken contract we multiply `etokenAmount by the exchangeRate` . if 1,000,000 tokens was transferred to the eTokenContract then the attacker can simply get the entire amount by just redeeming 1 wei
 
-### Impact Explanation
+### 1.3. <a name='ImpactExplanation'></a>Impact Explanation
 
 This issue enables attackers to drain the entire pool with a minimal initial amount
 
-### Likelihood Explanation
+### 1.4. <a name='LikelihoodExplanation'></a>Likelihood Explanation
 
 This is very likely to happen as all the attacker has to do is be the first person to call deposit
 
-### Proof of Concept
+### 1.5. <a name='ProofofConcept'></a>Proof of Concept
 
     - Make a minimal deposit (e.g., 1 wei) to receive 1 wei worth of eTokens.
     - Directly transfer a large amount of underlying tokens (e.g., 1,000 ETH) to the eToken contract.
     - Redeem the initial eTokens at an inflated exchange rate, withdrawing the full underlying balance.
 
-### Recommendation
+### 1.6. <a name='Recommendation'></a>Recommendation
 
 Burn a minimum amount of eTokens upon the first deposit, add the following to the `_deposit()` function
 
@@ -97,13 +141,13 @@ eTokenAmount = amount.mul(exchangeRate).div(Precision.FACTOR1E18);
 + } IExtraInterestBearingToken(reserve.eTokenAddress).mint(onBehalfOf, eTokenAmount);
 ```
 
-## MEDIUM: setBorrowingRateConfig Does Not Immediately Update currentBorrowingRate
+## 2. <a name='MEDIUM:setBorrowingRateConfigDoesNotImmediatelyUpdatecurrentBorrowingRate'></a>MEDIUM: setBorrowingRateConfig Does Not Immediately Update currentBorrowingRate
 
-### Summary
+### 2.1. <a name='Summary-1'></a>Summary
 
 The `LendingPool::setBorrowingRateConfig()` function updates the interest rate configuration based on reserve utilization, but it does not immediately apply the updated values. As a result, the `currentBorrowingRate` remains outdated until a user-triggered action (deposit or borrow) forces the system to recalculate the interest rates.
 
-### Finding Description
+### 2.2. <a name='FindingDescription-1'></a>Finding Description
 
 The function `setBorrowingRateConfig()` is used to update the current configuration for the `borrowingRates` depending on the `utilisationRate of the reserve`. The function is implemented as shown below: https://cantina.xyz/code/616d8bb4-16ce-4ca9-9ce9-5b99d6e146ef/contracts/lendingpool/LendingPool.sol?lines=401,421
 
@@ -127,31 +171,31 @@ function setBorrowingRateConfig(
 
 This sets the configuration,but it does not trigger a recalculation of the borrowing rate. Therefore, the `currentBorrowingRate` remains outdated until an external interaction (such as deposit or borrow) causes the reserve to update its state.
 
-### Impact Explanation
+### 2.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 The protocol loses control over when the updated borrowing rate becomes active. Between the time the new configuration is set and the next reserve update (which is unpredictable), the old `currentBorrowingRate` will still be used. This means that the protocol can lose funds since they will want for example for the current utilization rate to have 25% interest rate but instead they will have the previous 15% interest rate until someone update the state by deposit/borrow
 
-### Likelihood Explanation
+### 2.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 The likelihood of this happening is high as every time the protocol intends to change the borrowingRateConfig, the time the new change takes effect will always depend on when the next state update happens.
 
-### Proof of Concept
+### 2.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
     - A reserve is deployed with an initial borrowingRateConfig
     - The protocol updates this configuration by calling setBorrowingRateConfig
     - The updated configuration is not applied immediately. Instead, it takes effect only after the next user-triggered action that updates the reserve state.
 
-### Recommendation
+### 2.6. <a name='Recommendation-1'></a>Recommendation
 
 Consider calling `updateState` before the change of the configuration and `updateInterestRates` after the change of the configuration during the `LendingPool::setBorrowingRateConfig` call, in order to the update of the configuration to have instant and immediate effect on the `reserve.currentBorrowingRate`.
 
-## LOW: Rounding Error in Debt Accounting Prevents debt Repayment
+## 3. <a name='LOW:RoundingErrorinDebtAccountingPreventsdebtRepayment'></a>LOW: Rounding Error in Debt Accounting Prevents debt Repayment
 
-### Summary
+### 3.1. <a name='Summary-1'></a>Summary
 
 A vulnerability in the lending pool can prevent users from repaying their debts due to rounding errors. The reserves total debt `reserve.totalBorrows` may become less than the sum of individual debt positions borrowed amounts `debtPosition.borrowed` because of frequent updates to the reserves debt index and less frequent updates to debt positions. This can cause the `repay` function to revert due to underflow when attempting to subtract the `repayment amount` from `reserve.totalBorrows`, which would prevent users from repaying the debt
 
-### Finding Description
+### 3.2. <a name='FindingDescription-1'></a>Finding Description
 
 When repaying debt, we call the following function:
 
@@ -215,15 +259,15 @@ This also includes divisions but fewer updates mean fewer rounding errors, so `d
 
 These errors accumulate in `reserve.totalBorrows` with frequent updates, while debt positions, updated less often, retain more precision. Over time, this can make `reserve.totalBorrows` slightly less than the total of all debt positions, preventing users from repaying their debts due to underflow errors in the repay function.
 
-### Impact Explanation
+### 3.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 This makes it impossible for a user who wishes to repay their debt,which leads to locking their positions and potential liquidation risks. The risk of liquidation makes this a high risk
 
-### Likelihood Explanation
+### 3.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 As this relies on multiple pool updates, high interest rates, or long time intervals to accumulate significant errors, the likelihood is low
 
-### Proof of Concept
+### 3.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
     - Pool debt: reserve.totalBorrows = 1000 USDC.
     - User debt: debtPosition.borrowed = 1000.0001 USDC (due to less rounding).
@@ -233,7 +277,7 @@ As this relies on multiple pool updates, high interest rates, or long time inter
 reserve.totalBorrows = reserve.totalBorrows.sub(amount);
 ```
 
-### Recommendation
+### 3.6. <a name='Recommendation-1'></a>Recommendation
 
 Cap the repayment amount using both the user’s position and the reserve’s borrow total to avoid reverts due to rounding.
 
@@ -246,13 +290,13 @@ if (amount > reserve.totalBorrows) {
 }
 ```
 
-## LOW: Disabling borrowing affects repaying making it impossible to repay borrowed tokens
+## 4. <a name='LOW:Disablingborrowingaffectsrepayingmakingitimpossibletorepayborrowedtokens'></a>LOW: Disabling borrowing affects repaying making it impossible to repay borrowed tokens
 
-### Summary
+### 4.1. <a name='Summary-1'></a>Summary
 
 Unnecessary check on function repay might make it impossible to repay tokens borrowed.
 
-### Finding Description
+### 4.2. <a name='FindingDescription-1'></a>Finding Description
 
 When borrowing from lending pool, we have some constraints, ie only the vault contracts can
 
@@ -303,15 +347,15 @@ This works well if the check only exists in the function `borrow()` but in our c
 
 Note As the whitelist is about borrowing, having this check on repay function is not needed
 
-### Impact Explanation
+### 4.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 Borrowed funds cannot be repayed, medium as the admin can just enable/add the address the whitelist again
 
-### Likelihood Explanation
+### 4.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 Whenever we disable borrowing for an address,if the address has already borrowed prior to this disabling, then calling repay would always revert
 
-### Proof of Concept
+### 4.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
 A whitelisted User calls function borrow , this passes as the user is in the whitelist
 
@@ -334,7 +378,7 @@ returns (uint256)   {
 
 This makes it impossible to repay the borrowed tokens
 
-### Recommendation
+### 4.6. <a name='Recommendation-1'></a>Recommendation
 
 When repaying borrowed tokens, we should not enforce the `borrowingWhiteList`
 
@@ -349,13 +393,13 @@ DataTypes.DebtPositionData storage debtPosition = debtPositions[debtId];
 require(msg.sender == debtPosition.owner, Errors.VL_INVALID_DEBT_OWNER);
 ```
 
-## INFORMATIONAL: Potential Overcrediting in repay() Due to Misordered Logic
+## 5. <a name='INFORMATIONAL:PotentialOvercreditinginrepayDuetoMisorderedLogic'></a>INFORMATIONAL: Potential Overcrediting in repay() Due to Misordered Logic
 
-### Summary
+### 5.1. <a name='Summary-1'></a>Summary
 
 In `repay()`, user(vault) credit is incorrectly updated using the input repayment amount instead of the actual debt repaid. This can result in users receiving excessive credit if the repayment amount exceeds the debt.
 
-### Finding Description
+### 5.2. <a name='FindingDescription-1'></a>Finding Description
 
 ```solidity
 // Credits is the borrowing power of vaults
@@ -384,20 +428,20 @@ The problem with this approach is , the amount used to update the user credit is
 if (amount > debtPosition.borrowed) {    amount = debtPosition.borrowed;}
 ```
 
-### Impact Explanation
+### 5.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 This issues allows the vault to gain excess credit(borrowing power) by inflating the amount to be repaid. Note, passing a big amount has no effect to the caller as this is later capped to only capture the actual borrowed amount.
 
-### Likelihood Explanation
+### 5.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 Every time amount is greater than actual borrowed amount, then credit will be flawed, allowing the vault to have higher borrowing power.
 
-### Proof of Concept
+### 5.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
 - Call `repay()` with higher amount than actual borrowed amount
 - credit value is increased by the amount passed instead of the actual repaid amount
 
-### Recommendation
+### 5.6. <a name='Recommendation-1'></a>Recommendation
 
 Refactor the logic so that the actual amount repaid is calculated before updating the credit
 

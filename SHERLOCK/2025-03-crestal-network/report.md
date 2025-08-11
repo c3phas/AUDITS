@@ -1,35 +1,52 @@
-## Findings
+<!-- vscode-markdown-toc -->
 
-## HIGH: Attacker can steal all tokens as a result of the payWithERC20() function being public
+- 1. [Findings](#Findings)
+- 2. [HIGH: Attacker can steal all tokens as a result of the payWithERC20() function being public](#HIGH:AttackercanstealalltokensasaresultofthepayWithERC20functionbeingpublic)
+  - 2.1. [Root Cause](#RootCause)
+  - 2.2. [Internal Pre-conditions](#InternalPre-conditions)
+  - 2.3. [Attack Path](#AttackPath)
+  - 2.4. [Impact](#Impact)
+  - 2.5. [PoC](#PoC)
+  - 2.6. [Mitigation](#Mitigation)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='Findings'></a>Findings
+
+## 2. <a name='HIGH:AttackercanstealalltokensasaresultofthepayWithERC20functionbeingpublic'></a>HIGH: Attacker can steal all tokens as a result of the payWithERC20() function being public
 
 The function `payWithERC20()` on `payment.sol` is used to facilitate payments when creating agents and when user makes a top up.
 The bug happens because this function is exposed to the public and as such can be called by anyone. **An attacker can call this function to steal any approved tokens from any address, since the attacker would be able to pass the fromAddress of their choice.**
 
-### Root Cause
+### 2.1. <a name='RootCause'></a>Root Cause
 
 In Payment.sol the function `payWithERC20` is exposed to the public
 https://github.com/sherlock-audit/2025-03-crestal-network/blob/main/crestal-omni-contracts/src/Payment.sol#L25-L32
 Note this is a public function and as such anyone can call this function.
 Making this function a public function is the issue as it allows anyone to invoke it
 
-### Internal Pre-conditions
+### 2.2. <a name='InternalPre-conditions'></a>Internal Pre-conditions
 
     1. Victim has approved the contract to spend some of their tokens, which is common as we need approval to create agents
 
-### Attack Path
+### 2.3. <a name='AttackPath'></a>Attack Path
 
     1. A user(ALICE) intends to interact with the contract in creating an agent
     2. Alice decides to approve the contract to spend some of her tokens(to avoid doing this every time, ALICE approves max(uint256)
     3. Attacker directly calls `payWithERC20()` passing ALICE address as the `fromAddress` and the `ATTACKER` address as the `toAddress` and Amount > 0
     4. since all the checks would pass, ALICE balance would be transfered to Attacker
 
-### Impact
+### 2.4. <a name='Impact'></a>Impact
 
 An attacker can steal all approved tokens from a given user. Since the caller can pass any address as the fromAddress, the attacker can pass any arbitrary address and steal all the tokens
 
 When creating agent's users approve the contract to spend some tokens, if a user approves the contract to spend more than what they would need to create the agent eg max approvals, the attacker can steal any amount that was approved and has not been used yet.
 
-### PoC
+### 2.5. <a name='PoC'></a>PoC
 
 Add the following test to
 
@@ -77,7 +94,7 @@ Logs:
   attacker balance after 100000000000000000000
 ```
 
-### Mitigation
+### 2.6. <a name='Mitigation'></a>Mitigation
 
 Simply making the function as an internal one would fix the issue
 

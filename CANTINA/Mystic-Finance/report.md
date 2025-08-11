@@ -1,10 +1,67 @@
-## HIGH: Invalid withdrawal logic: actual ETH received ignored in favor of requested amount
+<!-- vscode-markdown-toc -->
 
-### Summary
+- 1. [HIGH: Invalid withdrawal logic: actual ETH received ignored in favor of requested amount](#HIGH:Invalidwithdrawallogic:actualETHreceivedignoredinfavorofrequestedamount)
+  - 1.1. [Summary](#Summary)
+  - 1.2. [Description](#Description)
+  - 1.3. [Impact Explanation](#ImpactExplanation)
+  - 1.4. [Likelihood Explanation](#LikelihoodExplanation)
+  - 1.5. [Proof of Concept](#ProofofConcept)
+  - 1.6. [Recommendations](#Recommendations)
+- 2. [HIGH: Available ETH currentWithHeldEth erased during withdrawal, causing accounting errors and payout](#HIGH:AvailableETHcurrentWithHeldEtherasedduringwithdrawalcausingaccountingerrorsandpayout)
+  - 2.1. [Summary](#Summary-1)
+  - 2.2. [Description](#Description-1)
+  - 2.3. [Impact Explanation](#ImpactExplanation-1)
+  - 2.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 2.5. [Proof of concept](#Proofofconcept)
+  - 2.6. [Recommendation](#Recommendation)
+- 3. [HIGH: Withheld funds cannot be staked since the function stakeWithheld always reverts](#HIGH:WithheldfundscannotbestakedsincethefunctionstakeWithheldalwaysreverts)
+  - 3.1. [Summary](#Summary-1)
+  - 3.2. [Finding Description](#FindingDescription)
+  - 3.3. [Impact Explanation](#ImpactExplanation-1)
+  - 3.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 3.5. [Proof of Concept](#ProofofConcept-1)
+- 4. [HIGH: Impossible to withdraw fees earned from withdrawals](#HIGH:Impossibletowithdrawfeesearnedfromwithdrawals)
+  - 4.1. [Summary](#Summary-1)
+  - 4.2. [Description](#Description-1)
+  - 4.3. [Impact Explanation](#ImpactExplanation-1)
+  - 4.4. [Likelihood Explantion](#LikelihoodExplantion)
+  - 4.5. [Proof Of Concept](#ProofOfConcept)
+  - 4.6. [Recommendation](#Recommendation-1)
+- 5. [HIGH: Lack of access controls on function restake allows anyone to restake ETH](#HIGH:LackofaccesscontrolsonfunctionrestakeallowsanyonetorestakeETH)
+  - 5.1. [Summary](#Summary-1)
+  - 5.2. [Description](#Description-1)
+  - 5.3. [Impact Explanation](#ImpactExplanation-1)
+  - 5.4. [Likelihood](#Likelihood)
+  - 5.5. [Proof Of Concept](#ProofOfConcept-1)
+  - 5.6. [Recommendation](#Recommendation-1)
+- 6. [MEDIUM: Splitting deposits to multiple validators prevents users from submitting(depositing) successfully](#MEDIUM:Splittingdepositstomultiplevalidatorspreventsusersfromsubmittingdepositingsuccessfully)
+  - 6.1. [Summary](#Summary-1)
+  - 6.2. [Description](#Description-1)
+  - 6.3. [Impact Explanation](#ImpactExplanation-1)
+  - 6.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 6.5. [Proof of Concept](#ProofofConcept-1)
+  - 6.6. [poc](#poc)
+  - 6.7. [Recommendation:](#Recommendation:)
+- 7. [MEDIUM: Improper Use of logical OR (||) in Capacity Check Causes Underflow and Deposit Failures](#MEDIUM:ImproperUseoflogicalORinCapacityCheckCausesUnderflowandDepositFailures)
+  - 7.1. [Summary](#Summary-1)
+  - 7.2. [Description](#Description-1)
+  - 7.3. [Impact explanation](#Impactexplanation)
+  - 7.4. [Likelihood explanation](#Likelihoodexplanation)
+  - 7.5. [Recommendation](#Recommendation-1)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='HIGH:Invalidwithdrawallogic:actualETHreceivedignoredinfavorofrequestedamount'></a>HIGH: Invalid withdrawal logic: actual ETH received ignored in favor of requested amount
+
+### 1.1. <a name='Summary'></a>Summary
 
 withdrawn is wrongly updated to amount when withdrawn is less than amount, which makes the contract believe we have more ETH available to send to user.
 
-### Description
+### 1.2. <a name='Description'></a>Description
 
 When users are withdrawing after the cooldown period, if amount > currentWithheldETH we end up withdrawing from plumeStaking Original function implementation: https://cantina.xyz/code/c160af78-28f8-47f7-9926-889b3864c6d8/Liquid-Staking/src/stPlumeMinter.sol?lines=164,194 Let's see the function with some added logs for debugging
 
@@ -75,15 +132,15 @@ Even though we only have around 5 ether we are attempting to send 10 ether - fee
 
 Due to lack of checks on the return values of the low level call sending ether, this went without being noticed - the bot should have found the missing check for return values.
 
-### Impact Explanation
+### 1.3. <a name='ImpactExplanation'></a>Impact Explanation
 
 This bug causes the contract to assume it has received more ETH than it actually has, leading to inflated user payouts, corrupted internal accounting. The contract will attempt to send more funds to users than it has.
 
-### Likelihood Explanation
+### 1.4. <a name='LikelihoodExplanation'></a>Likelihood Explanation
 
 High likelihood of this happening as everytime a user withdraws and we end up calling `plumeStaking.withdraw()`.
 
-### Proof of Concept
+### 1.5. <a name='ProofofConcept'></a>Proof of Concept
 
 ```solidity
 function test_withdraw_overwrites_withdrawnAmount() public {
@@ -138,17 +195,17 @@ Ran 1 test suite in 29.73s (28.67s CPU time): 0 tests passed, 1 failed, 0 skippe
 Failing tests:Encountered 1 failing test in test/fork/stPlumeMinter.t.sol:StPlumeMinterForkTest[FAIL: revert: Unable to send amount] test_withdraw_overwrites_withdrawnAmount() (gas: 1837109)
 ```
 
-### Recommendations
+### 1.6. <a name='Recommendations'></a>Recommendations
 
 Do not overwrite the amount withdrawn from `plumeStaking.withdraw()` when comparing that amount with the amount user has requested to withdraw.
 
-## HIGH: Available ETH currentWithHeldEth erased during withdrawal, causing accounting errors and payout
+## 2. <a name='HIGH:AvailableETHcurrentWithHeldEtherasedduringwithdrawalcausingaccountingerrorsandpayout'></a>HIGH: Available ETH currentWithHeldEth erased during withdrawal, causing accounting errors and payout
 
-### Summary
+### 2.1. <a name='Summary-1'></a>Summary
 
 When users withdraw , the code does not track `currentWithHeldEth` properly leading to incorrect data, as the ETH tracked by this variable is simply reset to zero.
 
-### Description
+### 2.2. <a name='Description-1'></a>Description
 
 Users can withdraw their stakes(after unstaking) by calling the function `withdraw()`
 
@@ -283,15 +340,15 @@ uint256 withholdFee = amount * WITHHOLD_FEE / 10000;
 currentWithheldETH += withdrawn - amount; //keep the rest of the funds for the rest of users that might have
 ```
 
-### Impact Explanation
+### 2.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 The contract fails to track the `currentWithheldETH` correctly which affects all calculations that rely on on this state variable. This Understates funds and miscalculates remaining ETH as we are essentially wiping out real ETH out by resetting what is meant to track it.
 
-### Likelihood Explanation
+### 2.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 The likelihood of this happening is high as this will happen every time a user calls withdraw and we use the first path
 
-### Proof of concept
+### 2.5. <a name='Proofofconcept'></a>Proof of concept
 
 We first do small deposits amounting to 2 eth, we do small deposits to ensure it's not staked but added to `currentWithheldETH`. We then make a full deposit of say 20 ether which is now staked, then we unstake a small amount 10 ether. The `currentWithheldETH being > 0` is necessary to achieve the path we want to follow.
 
@@ -337,7 +394,7 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 30.92s (25.70s CPU 
 
 Even though, `currentWithheldETH` was non zero, we have reset it to now zero and this amount was never tracked or added anywhere.
 
-### Recommendation
+### 2.6. <a name='Recommendation'></a>Recommendation
 
 Instead of resetting the `currentWithheldETH to 0`, we should add it to the amount we withdraw from plumeStaking to get the actual amount we now have at our disposal to send to user
 
@@ -354,13 +411,13 @@ if (amount > currentWithheldETH) {
 
 Alternatively, introduce a new variable that records the sum of withdrawn and `currentWithheldETH` before we reset `currentWithheldETH`. This would then be the amount available that we can send to user
 
-## HIGH: Withheld funds cannot be staked since the function stakeWithheld always reverts
+## 3. <a name='HIGH:WithheldfundscannotbestakedsincethefunctionstakeWithheldalwaysreverts'></a>HIGH: Withheld funds cannot be staked since the function stakeWithheld always reverts
 
-### Summary
+### 3.1. <a name='Summary-1'></a>Summary
 
 The function `stakeWitheld()` would always revert whenever called in an attempt to stake withheld tokens.
 
-### Finding Description
+### 3.2. <a name='FindingDescription'></a>Finding Description
 
 Once the withold ratio is set, some ETH is always withheld and not staked.
 
@@ -462,15 +519,15 @@ depositEther(2 ether);
 
 Only issue is, we don't have the 2 ether now, as our contract has 0 balance. So attempting to call plumeStaking would always revert with `EvmError: OutOfFunds`
 
-### Impact Explanation
+### 3.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 `StakeWithheld()` function is broken and withheld tokens cannot be staked. As much as as call to `rebalance` succeeds in depositing the balance, the follow up call inside the same function `(stakeWithheld)` causes the entire state change to revert.
 
-### Likelihood Explanation
+### 3.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 High likelihood as this function would always revert when called. This would prevent the witheheld tokens from being staked.
 
-### Proof of Concept
+### 3.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
 ```solidity
 function test_stakeWithheld_alwaysReverts() public {
@@ -515,13 +572,13 @@ Note, the initial call to deposit from the _rebalance() indeed passed
 │   ├─ [7691] 0xA20bfe49969D4a0E9abfdb6a46FeD777304ba07f::stake{value: 5001087451381946277}(1)    │   │   ├─ [6810] 0x76eF355e6DdB834640a6924957D5B1d87b639375::stake{value: 5001087451381946277}(1) [delegatecall]    │   │   │   ├─  emit topic 0: 0x521d5961e1d8e7e104af28f00e1f7e11655e7cc7e8d7a9b7a07e959a1598e215    │   │   │   │        topic 1: 0x000000000000000000000000fa0f05a76ebcbf400856ccccf29ff66d8acc843f    │   │   │   │        topic 2: 0x0000000000000000000000000000000000000000000000000000000000000001    │   │   │   │           data: 0x00000000000000000000000000000000000000000000000045676e8a4648d7a50000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045676e8a4648d7a5    │   │   │   └─ ← [Return] 5001087451381946277 [5.001e18]    │   │   └─ ← [Return] 5001087451381946277 [5.001e18]
 ```
 
-## HIGH: Impossible to withdraw fees earned from withdrawals
+## 4. <a name='HIGH:Impossibletowithdrawfeesearnedfromwithdrawals'></a>HIGH: Impossible to withdraw fees earned from withdrawals
 
-### Summary
+### 4.1. <a name='Summary-1'></a>Summary
 
 Due to how the function `withdrawFees` is implemented, the owner cannot send the fees collected from withdrawals to his address.
 
-### Description
+### 4.2. <a name='Description-1'></a>Description
 
 When users withdraw by calling `withdraw()` they are charged a fee. see below https://github.com/cantina-competitions/mystic-monorepo/blob/42b70871d73c7acfd3b3f2b8ca19dee576be2123/Liquid-Staking/src/stPlumeMinter.sol#L164-L194
 
@@ -567,15 +624,15 @@ This means, by the time we execute the rest of the function `withdrawFee()` ther
 
 To make things worse, the contract didn't check the return value for this low level call so this was never spotted.
 
-### Impact Explanation
+### 4.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 As fees are meant to be sent to a given address, this bug prevents this from happening as all amount ends up being staked. Medium over high as funds are not lost just redirected somewhere else.
 
-### Likelihood Explantion
+### 4.4. <a name='LikelihoodExplantion'></a>Likelihood Explantion
 
 High likelihood as everytime this function is called, the accumulated fees would always be staked instead of being sent to the owner.
 
-### Proof Of Concept
+### 4.5. <a name='ProofOfConcept'></a>Proof Of Concept
 
 To make sure we always have enough balance when about to call withdrawFees, we make initial deposit, call unstake and then we withdraw which gets the fees.
 
@@ -653,17 +710,17 @@ Ran 1 test for test/fork/stPlumeMinter.t.sol:StPlumeMinterForkTest[FAIL: revert:
 
 **Note:** we can now clearly see where the error happened
 
-### Recommendation
+### 4.6. <a name='Recommendation-1'></a>Recommendation
 
 Several things need to be fixed: Ensure we have enough balance in the contract to send fees Check the return value of the low level call to ensure everything went through As rebalance always ends up staking the entire contract balance, might need to reevaluate if we need it inside the withdrawFees function
 
-## HIGH: Lack of access controls on function restake allows anyone to restake ETH
+## 5. <a name='HIGH:LackofaccesscontrolsonfunctionrestakeallowsanyonetorestakeETH'></a>HIGH: Lack of access controls on function restake allows anyone to restake ETH
 
-### Summary
+### 5.1. <a name='Summary-1'></a>Summary
 
 The function `restake()` lacks access control as such anyone can restake the funds currently in cooldown.
 
-### Description
+### 5.2. <a name='Description-1'></a>Description
 
 After calling `unstake()` ,the unstaked amount is subjected to a cooldown period before which a user cannot withdraw. As seen in `withdraw()` we check if cooldown period is over before proceeding.
 
@@ -694,15 +751,15 @@ function restake(uint16 validatorId) external nonReentrant returns (uint256 amou
 
 The issue here is this function is not protected and as such anyone can be able to restake the funds in cooldown.
 
-### Impact Explanation
+### 5.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 This is a critical function as such there should be limit to who can call it. When users call `unstake()`, the tokens are held in a cooldown state for a given period, then users can just withdraw them. However, this function restake is meant to restake this tokens which means removing them from cooldown. Only priviliged roles should be allowed to do this.
 
-### Likelihood
+### 5.4. <a name='Likelihood'></a>Likelihood
 
 High likelihood of this happening as the function is not protected in any way, anyone can just call it
 
-### Proof Of Concept
+### 5.5. <a name='ProofOfConcept-1'></a>Proof Of Concept
 
 First we deposit and unstake as user1, then while the funds are in cooldown, user2 calls `restakes` which now restakes all the funds in cooldown.
 
@@ -743,17 +800,17 @@ Ran 1 test for test/fork/stPlumeMinter.t.sol:StPlumeMinterForkTest[PASS] test_re
 Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 28.26s (23.65s CPU time)
 ```
 
-### Recommendation
+### 5.6. <a name='Recommendation-1'></a>Recommendation
 
 Add access control to the function `restakes()`.
 
-## MEDIUM: Splitting deposits to multiple validators prevents users from submitting(depositing) successfully
+## 6. <a name='MEDIUM:Splittingdepositstomultiplevalidatorspreventsusersfromsubmittingdepositingsuccessfully'></a>MEDIUM: Splitting deposits to multiple validators prevents users from submitting(depositing) successfully
 
-### Summary
+### 6.1. <a name='Summary-1'></a>Summary
 
 Users cannot successfully `submit(deposit)` in some cases: Due to how splitting stakes across multiple validators is implemented, a user might not be able to deposit ETH as the amount is split and no follow up on `minStakeAmount` is made after the split. The check for `minStakeAmount` is only performed on the initial call to deposit, if this deposit ends up being split, we don't check this, which means , if the split allowed first deposit to go through, if the second deposit(from split amount) could be less than `minStakeAmount`
 
-### Description
+### 6.2. <a name='Description-1'></a>Description
 
 When users call submit, we are rerouted to the function `deposit()` which checks if amount being deposited is greater than `minStakeAmount`. If so we get inside a loop where the deposit will be split among multiple validators if one validator has no enough capacity. This is where the issue is.
 
@@ -788,15 +845,15 @@ function depositEther(uint256 _amount) internal returns (uint256 depositedAmount
 
 If first validator has less capacity, we only deposit to their capacity `depositSize = capacity`;, As remaining amount is still greater than 0, we loop one more time `while (remainingAmount > 0) { `. The problem is now we don't check `if remainingAmount < plumeStaking.getMinStakeAmount()`. This means , we will call `stake()` for second validator without validating the `depositSize`. This would cause the call to revert as deposit must be greater or equal to `minStakeAmount`
 
-### Impact Explanation
+### 6.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 User would be unable to deposit or submit any ETH to the contract if their deposit would end up being split among several validators.
 
-### Likelihood Explanation
+### 6.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 There is a high likelihood of this happening, however some requirements are , the deposit is split among several validators, a small amount which is less than minStakeAmount remains after the split.
 
-### Proof of Concept
+### 6.5. <a name='ProofofConcept-1'></a>Proof of Concept
 
 There is a minStakeAmount of 0.1 ETH
 
@@ -829,7 +886,7 @@ Add the following test to stPlumeMinter.t.sol after setting capacity to 2 ether 
 forge test --fork-url https://phoenix-rpc.plumenetwork.xyz/ --match-test test_splitDepositsCouldFail
 ```
 
-### poc
+### 6.6. <a name='poc'></a>poc
 
 ```solidity
 function test_splitDepositsCouldFail() public {
@@ -859,7 +916,7 @@ Ran 1 test for test/fork/stPlumeMinter.t.sol:StPlumeMinterForkTest[PASS] test_sp
 │   ├─ [1335] 0xA20bfe49969D4a0E9abfdb6a46FeD777304ba07f::stake{value: 50000000000000000}(1)    │   │   ├─ [447] 0x76eF355e6DdB834640a6924957D5B1d87b639375::stake{value: 50000000000000000}(1) [delegatecall]    │   │   │   └─ ← [Revert] StakeAmountTooSmall(50000000000000000 [5e16], 100000000000000000 [1e17])    │   │   └─ ← [Revert] StakeAmountTooSmall(50000000000000000 [5e16], 100000000000000000 [1e17])    │   ├─  storage changes:    │   │   @ 0x693fae37672bc30bbe20719647917bd9103873c231d017918b8d43203391bb6d: 0 → 1    │   └─ ← [Revert] StakeAmountTooSmall(50000000000000000 [5e16], 100000000000000000 [1e17])
 ```
 
-### Recommendation:
+### 6.7. <a name='Recommendation:'></a>Recommendation:
 
 When the stake is split to multiple validators, we should track remaining amount after staking with each validator and compare against the `minStakeAmount`. If the `remaining amount > 0` but less than `minStakeAmount` inside the while loop, we should add it to `currentWithHeldEth` and reset `remainingAmount.`
 
@@ -893,9 +950,9 @@ function depositEther(uint256 _amount) internal returns (uint256 depositedAmount
 }
 ```
 
-## MEDIUM: Improper Use of logical OR (||) in Capacity Check Causes Underflow and Deposit Failures
+## 7. <a name='MEDIUM:ImproperUseoflogicalORinCapacityCheckCausesUnderflowandDepositFailures'></a>MEDIUM: Improper Use of logical OR (||) in Capacity Check Causes Underflow and Deposit Failures
 
-### Summary
+### 7.1. <a name='Summary-1'></a>Summary
 
 Function `getNextValidator()` uses logical `OR` instead of logical `AND` which might lead to deposits being impossible to make.
 
@@ -903,7 +960,7 @@ The operators `|| and &&` apply the common short-circuiting rules. This means th
 
 So if `info.maxCapacity != 0` is true, it won’t even check whether `totalStaked < info.maxCapacity`. This leads to unsafe arithmetic if `totalStaked > info.maxCapacity`, causing a revert due to underflow when subtracting.
 
-### Description
+### 7.2. <a name='Description-1'></a>Description
 
 The function `getNextValidator()` is called everytime we deposit to try and get a validator where we can stake. This function is implemented as follows https://github.com/cantina-competitions/mystic-monorepo/blob/42b70871d73c7acfd3b3f2b8ca19dee576be2123/Liquid-Staking/src/stPlumeMinter.sol#L55-L78
 
@@ -948,11 +1005,11 @@ As a result of this we will attempt to do the arithmetic `info.maxCapacity - tot
 
 Capacity might be initially set to `type(uint256).max` then later adjusted to a smaller value using `setValidatorCapacity()`
 
-### Impact explanation
+### 7.3. <a name='Impactexplanation'></a>Impact explanation
 
 All calls to deposit would end up reverting since the compiler will prevent any underflows(checked arithmetic) As deposits are a core part of this contract, this is a high impact bug as it prevents users from staking.
 
-### Likelihood explanation
+### 7.4. <a name='Likelihoodexplanation'></a>Likelihood explanation
 
 If capacity is set without considering the current staked amount, then there is a chance this would cause a revert
 Proof of concept
@@ -975,7 +1032,7 @@ Failing tests:Encountered 1 failing test in test/fork/stPlumeMinter.t.sol:StPlum
 
 Expected We should never even attempt to do the arithmetic if totalStaked > info.maxCapacity thus both conditions should be checked.
 
-### Recommendation
+### 7.5. <a name='Recommendation-1'></a>Recommendation
 
 Use logical AND(&&) instead of OR(||)
 

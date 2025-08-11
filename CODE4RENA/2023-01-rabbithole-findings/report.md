@@ -1,17 +1,31 @@
-## Findings
+<!-- vscode-markdown-toc -->
 
-## HIGH: Anyone can mint a receipt despite efforts of restricting it to onlyMinters
+- 1. [Findings](#Findings)
+- 2. [HIGH: Anyone can mint a receipt despite efforts of restricting it to onlyMinters](#HIGH:AnyonecanmintareceiptdespiteeffortsofrestrictingittoonlyMinters)
+  - 2.1. [Vulnerability details](#Vulnerabilitydetails)
+  - 2.2. [Proof of Concept](#ProofofConcept)
+  - 2.3. [Recommended Mitigation Steps](#RecommendedMitigationSteps)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='Findings'></a>Findings
+
+## 2. <a name='HIGH:AnyonecanmintareceiptdespiteeffortsofrestrictingittoonlyMinters'></a>HIGH: Anyone can mint a receipt despite efforts of restricting it to onlyMinters
 
 https://github.com/rabbitholegg/quest-protocol/blob/8c4c1f71221570b14a0479c216583342bd652d8d/contracts/RabbitHoleReceipt.sol#L58-L61
 https://github.com/rabbitholegg/quest-protocol/blob/8c4c1f71221570b14a0479c216583342bd652d8d/contracts/RabbitHoleTickets.sol#L47-L50
 
-### Vulnerability details
+### 2.1. <a name='Vulnerabilitydetails'></a>Vulnerability details
 
 Anyone can mint a receipt despite efforts of restricting it to `onlyMinters`.
 The `onlyMinter` modifer does not do anything to restrict calls to `onlyMinters` which would allow anyone to call the function mint.
 The require statement was ommited on the modifier and just does a comparison with no side effects regardless of the comparison results
 
-### Proof of Concept
+### 2.2. <a name='ProofofConcept'></a>Proof of Concept
 
 https://github.com/rabbitholegg/quest-protocol/blob/8c4c1f71221570b14a0479c216583342bd652d8d/contracts/RabbitHoleReceipt.sol#L58-L61
 
@@ -40,7 +54,7 @@ A similar case on https://github.com/rabbitholegg/quest-protocol/blob/8c4c1f7122
 
 This would allow anyone to call the function `mint` and `mintBatch`
 
-### Recommended Mitigation Steps
+### 2.3. <a name='RecommendedMitigationSteps'></a>Recommended Mitigation Steps
 
 The modifier onlyMinter should be modified as below
 

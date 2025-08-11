@@ -1,10 +1,32 @@
-## Findings
+<!-- vscode-markdown-toc -->
 
-## HIGH: Calling refund does not update the array of contributors
+- 1. [Findings](#Findings)
+- 2. [HIGH: Calling refund does not update the array of contributors](#HIGH:Callingrefunddoesnotupdatethearrayofcontributors)
+  - 2.1. [Finding Description](#FindingDescription)
+  - 2.2. [Impact Explanation](#ImpactExplanation)
+  - 2.3. [Likelihood Explanation](#LikelihoodExplanation)
+  - 2.4. [Recommendation](#Recommendation)
+- 3. [HIGH: Lack of state updates when calling refund()](#HIGH:Lackofstateupdateswhencallingrefund)
+  - 3.1. [Summary](#Summary)
+  - 3.2. [Finding Description](#FindingDescription-1)
+  - 3.3. [Impact Explanation](#ImpactExplanation-1)
+  - 3.4. [Likelihood Explanation](#LikelihoodExplanation-1)
+  - 3.5. [Proof of Concept](#ProofofConcept)
+  - 3.6. [Recommendation](#Recommendation-1)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+## 1. <a name='Findings'></a>Findings
+
+## 2. <a name='HIGH:Callingrefunddoesnotupdatethearrayofcontributors'></a>HIGH: Calling refund does not update the array of contributors
 
 When refund is called, the array of contributors should be updated to remove the user who called `refund()`
 
-### Finding Description
+### 2.1. <a name='FindingDescription'></a>Finding Description
 
 When users make a contribution, they are added to the array `address[] public contributors;` as show below https://github.com/daaoai/daaoai_contracts/blob/99e1743582cc01439b8f1140ca929f57afeacd5d/src/Daao.sol#L174-L176
 
@@ -46,25 +68,25 @@ However for users who called `refund()` earlier, their contribution is currently
 
 This means we would repeatedly call `token.mint()` with `tokensToMint=0` This wastes too much gas and could even lead to a denial of service.
 
-### Impact Explanation
+### 2.2. <a name='ImpactExplanation'></a>Impact Explanation
 
 As users are mostly whitelisted, the chances of this growing too big is small, therefore I think low impact is accurate.
 
-### Likelihood Explanation
+### 2.3. <a name='LikelihoodExplanation'></a>Likelihood Explanation
 
 Whenever `refund()` is called, the value of contributors would always return wrong length
 
-### Recommendation
+### 2.4. <a name='Recommendation'></a>Recommendation
 
 When users call `refund()`, they should be removed from the list of contributors. This would prevent looping on too many items and also avoids us from making unnecessary external calls ie `token.mint()`
 
-## HIGH: Lack of state updates when calling refund()
+## 3. <a name='HIGH:Lackofstateupdateswhencallingrefund'></a>HIGH: Lack of state updates when calling refund()
 
-### Summary
+### 3.1. <a name='Summary'></a>Summary
 
 Incorrect state updates when calling function `refund()` makes it impossible to hit the fundraising goal. When calling `refund` only the users mapping is being updated while `totalRaised` is not being updated.
 
-### Finding Description
+### 3.2. <a name='FindingDescription-1'></a>Finding Description
 
 If the fundraising goal is not reached and deadline has reached, contributors are allowed to call `refund` function to get their contributions back. This resets their contributions to 0 in `contributions[msg.sender] = 0`; and transfers the funds to the user see https://github.com/daaoai/daaoai_contracts/blob/99e1743582cc01439b8f1140ca929f57afeacd5d/src/Daao.sol#L403-L417
 
@@ -99,21 +121,21 @@ When refunding , ideally, we want to do the opposite of this which means reduce 
 
 The problem arises in that the function `refund()` only refunds the user but does not update the state variable `totalRaised` which would still reflect the old variable
 
-### Impact Explanation
+### 3.3. <a name='ImpactExplanation-1'></a>Impact Explanation
 
 Wrong state updates will lead to incorrect calculations , especially in this case where we get a false sense of the fundraising goal being achieved
 
-### Likelihood Explanation
+### 3.4. <a name='LikelihoodExplanation-1'></a>Likelihood Explanation
 
 The likelihood is high as this would happen every time the goal was not reached and a user calls `refund()`
 
-### Proof of Concept
+### 3.5. <a name='ProofofConcept'></a>Proof of Concept
 
 Suppose we have a goal of 50K, user A contributes 20K, user B contributes 10K, totalRaised=30K, which is 20 shy of the goal. The contribution deadline passes and the goal was not reached yet as we only have 30K. Now user B calls refund after we failed to hit the goal , user B gets his 10K back and `contributions[USER B] = 0`. now, only user A is left but `totalRaised` still = 30K. as this was not updated in `refund()`
 
 Suppose the protocol admin decides to extend the deadline which allows contributions to continue by calling function `extendFundraisingDeadline()`. If contributions resume, our state variable `totalRaised` is still at 30K, meaning once another user contributes say 20K, we would have 50K which equals the goal. we can only raise 20K before the goal is reached , but in real sense we need 30K
 
-### Recommendation
+### 3.6. <a name='Recommendation-1'></a>Recommendation
 
 To mitigate this, just update the state variable `totalRaised` when `refund()` is called
 
